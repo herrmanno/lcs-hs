@@ -24,8 +24,9 @@ data LCSResult = LCSResult
     , size :: (Int,Int)
     }
 
-data Direction = Up | Left | Diagonal
+data Direction = None | Up | Left | Diagonal
 
+showDirection None = " "
 showDirection Up = "↑"
 showDirection Left = "←"
 showDirection Diagonal = "↖"
@@ -43,18 +44,16 @@ showLCSResult LCSResult { from, to, values, directions, size } =
           | y <- [-1..fst size]
         ]
     where
-        showValue (-1) (-1) = " 0"
         showValue y x = showDirection (directions M.! (y,x)) <> show (values M.! (y,x))
 
 showLCSSteps :: LCSResult -> String
 showLCSSteps LCSResult { to, directions, size } = unlines $ go size where
-    go (-1,_) = []
-    go (_,-1) = []
+    go (-1,-1) = []
     go (y,x) = case directions M.! (y,x) of
        Diagonal -> go (y-1,x-1) 
        Left -> (sDelete x) : go (y,x-1)
-       Up -> case directions M.! (y-1,x) of
-               Left -> (sReplace y x) : go (y-1,x-1)
+       Up -> case M.lookup (y-1,x) directions of
+               Just Left -> (sReplace y x) : go (y-1,x-1)
                _ -> (sInsert y x) : go (y-1,x)
     sDelete x = printf "delete(%d)" (x + 1)
     sInsert y x = printf "insertAfter(%d,%c)" (x + 1) (to !! y)
@@ -72,8 +71,9 @@ lcs as bs = LCSResult as bs values directions size
             | as !! x == bs !! y = 1 + values M.! (y-1, x-1)
             | otherwise = max (values M.! (y-1,x)) (values M.! (y,x-1))
         directions = M.fromList (map (\c -> (c, mapDirections c)) coords)
-        mapDirections (-1,_) =  Left
-        mapDirections (_,-1) =  Up
+        mapDirections (-1,-1) = None
+        mapDirections (-1,_) = Left
+        mapDirections (_,-1) = Up
         mapDirections (y,x)
             | as !! x == bs !! y = Diagonal
             | (values M.! (y,x-1)) > (values M.! (y-1,x)) = Left
